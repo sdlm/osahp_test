@@ -5,10 +5,6 @@ from pony.orm.core import Query
 from models import *
 
 
-MINIMUM_MARKED_DATA_PERCENT = 3
-MINIMUM_NEW_CAT_PERCENT = 50
-
-
 def get_biggest_new_category(queryset: Query):
     """
     Найдём самую большую категорию в размеченных данных
@@ -30,15 +26,16 @@ def get_biggest_new_category(queryset: Query):
     return cat_id, cat_name, cat_size
 
 
-def mark_up():
+def mark_up(mark_up_all: bool = False):
     """
     Разметим данные используя группировку по категориям.
     """
+    from mark_up_products import MINIMUM_MARKED_DATA_PERCENT, MINIMUM_NEW_CAT_PERCENT
 
     with db_session:
         p1_count = Products_1.select().count()
         origin_p2_count = total_p2_count = Products_2.select().count()
-        p2_percent_in_p1 = int(total_p2_count / p1_count * 100)
+        p2_percent_in_p1 = total_p2_count / p1_count * 100
 
         # Сначала пройдёмся по листам дерева категорий
         for cat in select(c for c in Categories if count(c.child_set) == 0):
@@ -79,21 +76,8 @@ def mark_up():
                         )
                     )
 
-                    # нам важны как однородность размеченных данных так и процент размеченных данных
-                    # грубо, можно было бы сделать if new_cat_percent + marked_up_percent > 100,
-                    # но на мой взгляд это смотрится черезчур дико
-                    mark_up_data = False
-                    if new_cat_percent == 100:
-                        mark_up_data = True
-                    elif new_cat_percent > 90:
-                        if marked_up_percent >= 10:
-                            mark_up_data = True
-                    elif new_cat_percent > 80:
-                        if marked_up_percent >= 20:
-                            mark_up_data = True
-                    elif new_cat_percent > 70:
-                        if marked_up_percent >= 30:
-                            mark_up_data = True
+                    from mark_up_products import make_decision
+                    mark_up_data = True if mark_up_all else make_decision(new_cat_percent, marked_up_percent)
 
                     # размечаем данные
                     if mark_up_data:
@@ -113,9 +97,13 @@ def mark_up():
                     # saves objects created by this moment in the database
                     flush()
 
+        # А теперь будем проверим, сколько могут добавить остальные категории
+        other_prod = sum([len(cat.product_set) for cat in select(c for c in Categories if count(c.child_set) != 0)])
+        print(f'not leaf categories can add: < {other_prod / p1_count * 100:3.1f}%')
+
         print(f'total count of t1 products: {p1_count:6d}')
         print(f'total count of t2 products: {origin_p2_count:6d}')
-        print(f'initial ratio: {p2_percent_in_p1}%')
-        print(f'  final ratio: {int(total_p2_count / p1_count * 100)}%')
+        print(f'initial ratio: {p2_percent_in_p1:3.1f}%')
+        print(f'  final ratio: {total_p2_count / p1_count * 100:3.1f}%')
 
         rollback()
