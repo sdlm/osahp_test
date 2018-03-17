@@ -26,7 +26,7 @@ def get_biggest_new_category(queryset: Query):
     return cat_id, cat_name, cat_size
 
 
-def mark_up(mark_up_all: bool = False):
+def mark_up(mark_up_all: bool = False, verbose: bool = False):
     """
     Разметим данные используя группировку по категориям.
     """
@@ -54,7 +54,7 @@ def mark_up(mark_up_all: bool = False):
 
                     # если в текущей группе размечено менее 3% продуктов,
                     # то мы считаем что данных для разметки этой группы недостаточно
-                    if marked_up_percent < MINIMUM_MARKED_DATA_PERCENT:
+                    if not mark_up_all and marked_up_percent < MINIMUM_MARKED_DATA_PERCENT:
                         continue
 
                     new_cat_id, new_cat_name, new_cat_size = get_biggest_new_category(p2)
@@ -65,19 +65,19 @@ def mark_up(mark_up_all: bool = False):
                     # если категория с наибольшим кол-вом продуктов имеет долю менее половины
                     # то мы считаем что данных для разметки этой группы недостаточно
                     # т.е. в данной категории размеченные данные слишком разнородны
-                    if new_cat_percent < MINIMUM_NEW_CAT_PERCENT:
+                    if not mark_up_all and new_cat_percent < MINIMUM_NEW_CAT_PERCENT:
                         continue
-
-                    # дебаг
-                    print(
-                        '{:70s} {:5d} {:5d} {:>8.1f} {:>8.1f}   {}'.format(
-                            cat.name, p1_len, p2_len,
-                            marked_up_percent, new_cat_percent, new_cat_name
-                        )
-                    )
 
                     from mark_up_products import make_decision
                     mark_up_data = True if mark_up_all else make_decision(new_cat_percent, marked_up_percent)
+
+                    if mark_up_data and verbose:
+                        print(
+                            '{:70s} {:5d} {:5d} {:>8.1f} {:>8.1f}   {}'.format(
+                                cat.name, p1_len, p2_len,
+                                marked_up_percent, new_cat_percent, new_cat_name
+                            )
+                        )
 
                     # размечаем данные
                     if mark_up_data:
