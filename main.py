@@ -5,6 +5,10 @@ from pony.orm.core import Query
 from models import *
 
 
+MINIMUM_MARKED_DATA_PERCENT = 3
+MINIMUM_NEW_CAT_PERCENT = 50
+
+
 def get_biggest_new_category(queryset: Query):
     """
     Найдём самую большую категорию в размеченных данных
@@ -53,7 +57,7 @@ def mark_up():
 
                     # если в текущей группе размечено менее 3% продуктов,
                     # то мы считаем что данных для разметки этой группы недостаточно
-                    if marked_up_percent < 3:
+                    if marked_up_percent < MINIMUM_MARKED_DATA_PERCENT:
                         continue
 
                     new_cat_id, new_cat_name, new_cat_size = get_biggest_new_category(p2)
@@ -64,7 +68,7 @@ def mark_up():
                     # если категория с наибольшим кол-вом продуктов имеет долю менее половины
                     # то мы считаем что данных для разметки этой группы недостаточно
                     # т.е. в данной категории размеченные данные слишком разнородны
-                    if new_cat_percent < 50:
+                    if new_cat_percent < MINIMUM_NEW_CAT_PERCENT:
                         continue
 
                     # дебаг
